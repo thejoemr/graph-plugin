@@ -42,7 +42,7 @@ internal class SharepointClient : ISharepointClient
         var output = new List<File>();
 
         // Create the file route
-        var currentFolder = context.Web.RootFolder; // Start from the root folder
+        var currentFolder = context.Web.DefaultDocumentLibrary().RootFolder; // Start from the root folder
 
         // Split the route by segments and adding all as a new folder
         foreach (var segment in route.Split('/'))
@@ -81,18 +81,21 @@ internal class SharepointClient : ISharepointClient
             // Get the file name from the URL
             var fileName = Path.GetFileName(fileUrl);
 
-            // Use File.OpenBinaryDirect method to retrieve binary data of file
-            var fileInformation = File.OpenBinaryDirect(context, fileUrl);
+            // Get the file from SharePoint
+            var file = context.Web.GetFileByServerRelativeUrl(fileUrl);
+            context.Load(file);
+            context.ExecuteQuery();
+
+            // Get the file content
+            var fileInformation = file.OpenBinaryStream();
 
             // Use a memory stream to store the binary data
-            using (var memoryStream = new MemoryStream())
-            {
-                // Copy the binary data from the file stream to the memory stream
-                fileInformation.Stream.CopyTo(memoryStream);
-
-                // Yield the file name and content as a tuple
-                yield return (fileName, memoryStream.ToArray());
-            }
+            using var memoryStream = new MemoryStream();
+            // Copy the binary data from the file stream to the memory stream
+            fileInformation.Value.CopyTo(memoryStream);
+            // Yield the file name and content as a tuple
+            yield return (fileName, memoryStream.ToArray());
         }
     }
+
 }
