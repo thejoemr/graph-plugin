@@ -9,11 +9,11 @@ public static class IoC
 {
     public static void AddGraph(this IServiceCollection services)
     {
-        services.AddSingleton<AuthenticationManager>();
-        services.AddSingleton<ApplicationOptions>();
-        services.AddSingleton<GraphClientFactory>();
-        services.AddTransient<IGraphUserClient>();
-        services.AddTransient<IGraphMailClient>();
+        services.AddSingleton<IAuthenticationManager, AuthenticationManager>();
+        services.AddSingleton<IClientFactory, ClientFactory>();
+        services.AddTransient<IGraphUserClient, GraphUserClient>();
+        services.AddTransient<IGraphMailClient, GraphMailClient>();
+        services.AddTransient<ISharepointClient, SharepointClient>();
 
         services.AddMemoryCache();
     }

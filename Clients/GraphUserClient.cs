@@ -17,28 +17,37 @@ internal class GraphUserClient : IGraphUserClient
     public GraphUserClient(IServiceProvider serviceProvider)
     {
         // Retrieve the configuration data
-        var configuration = serviceProvider.GetService<IConfiguration>();
-        var clientFactory = serviceProvider.GetService<GraphClientFactory>() ?? throw new NullReferenceException();
+        var configuration = serviceProvider.GetService<IConfiguration>() ?? throw new NullReferenceException();
+        var clientFactory = serviceProvider.GetService<IClientFactory>() ?? throw new NullReferenceException();
 
-        // Retrieve the username and password from the configuration
-        var usr = configuration?.GetValue<string>("your_username_azureAD");
-        var pwd = configuration?.GetValue<string>("your_password_azureAD");
-        _graphClient = clientFactory.CreateNew(username: usr ?? null!, password: pwd ?? null!, scopes: new string[]
+        // Get the values of the `usr` and `pwd` parameters from the configuration.
+        var usr = configuration.GetValue<string>("your_username_azureAD") ?? throw new NullReferenceException();
+        var pwd = configuration.GetValue<string>("your_password_azureAD") ?? throw new NullReferenceException();
+
+        // Create a new `GraphServiceClient` instance with the given `username`, `password`, and `scopes`.
+        _graphClient = clientFactory.BuildNewToGraph(username: usr, password: pwd, scopes: new string[]
         {
-                "User.Read"
+            "User.Read"
         });
     }
 
     // Method to find a user by their email address
-    public async Task<User> FindUserByMailAsync(string mail)
+    public async Task<User?> FindUserByMailAsync(string mail)
     {
-        // Make a request to the Microsoft Graph API to retrieve the user data
-        var user = await _graphClient.Users[mail].Request().GetAsync();
-        return user;
+        try
+        {
+            // Make a request to the Microsoft Graph API to retrieve the user data
+            return await _graphClient.Users[mail].Request().GetAsync();
+        }
+        catch (Exception)
+        {
+            // If the mail is not part of the azure active directory users, return null as default
+            return null;
+        }
     }
 
     // Method to search for users by a text match
-    public async Task<GraphUserSearchResult> GetUsersByMatchAsync(string? textToMatch = null, int pageSize = 10, string? skipToken = null)
+    public async Task<GraphUserSearchResultDto> GetUsersByMatchAsync(string? textToMatch = null, int pageSize = 10, string? skipToken = null)
     {
         // List of query options to use when making the request to the Microsoft Graph API
         var queryOptions = new List<QueryOption>
@@ -67,7 +76,7 @@ internal class GraphUserClient : IGraphUserClient
         skipToken = users.NextPageRequest?.QueryOptions?.FirstOrDefault(qo => string.Equals("$skipToken", qo.Name, StringComparison.InvariantCultureIgnoreCase))?.Value;
 
         // Return the result of the search
-        return new GraphUserSearchResult
+        return new GraphUserSearchResultDto
         {
             Data = users.Select(user => new JObject
             {

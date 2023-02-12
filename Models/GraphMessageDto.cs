@@ -1,6 +1,6 @@
 namespace graph_plugin.Models;
 
-public struct GraphMessageInfo
+public struct GraphMessageDto
 {
     public Guid MessageId { get; set; }
     public IEnumerable<string> ToRecipients { get; init; }

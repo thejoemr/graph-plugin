@@ -18,16 +18,16 @@ internal class GraphMailClient : IGraphMailClient
     public GraphMailClient(IServiceProvider serviceProvider)
     {
         // Get the configuration from the service provider.
-        var configuration = serviceProvider.GetService<IConfiguration>();
+        var configuration = serviceProvider.GetService<IConfiguration>() ?? throw new NullReferenceException();
         // Get the `GraphClientFactory` from the service provider or throw an exception if it's null.
-        var clientFactory = serviceProvider.GetService<GraphClientFactory>() ?? throw new NullReferenceException();
+        var clientFactory = serviceProvider.GetService<IClientFactory>() ?? throw new NullReferenceException();
 
         // Get the values of the `usr` and `pwd` parameters from the configuration.
-        var usr = configuration?.GetValue<string>("your_username_azureAD");
-        var pwd = configuration?.GetValue<string>("your_password_azureAD");
+        var usr = configuration.GetValue<string>("your_username_azureAD") ?? throw new NullReferenceException();
+        var pwd = configuration.GetValue<string>("your_password_azureAD") ?? throw new NullReferenceException();
 
         // Create a new `GraphServiceClient` instance with the given `username`, `password`, and `scopes`.
-        _graphClient = clientFactory.CreateNew(username: usr ?? null!, password: pwd ?? null!, scopes: new string[]
+        _graphClient = clientFactory.BuildNewToGraph(username: usr, password: pwd, scopes: new string[]
         {
             "Mail.Send",
             "Mail.ReadWrite"
@@ -56,7 +56,7 @@ internal class GraphMailClient : IGraphMailClient
     }
 
     // A method to send an email.
-    public async Task SendAsync(GraphMessageInfo messageInfo)
+    public async Task SendAsync(GraphMessageDto messageInfo)
     {
         // Create a new instance of the `Message` class.
         var message = new Message
@@ -106,7 +106,7 @@ internal class GraphMailClient : IGraphMailClient
     }
 
     // A method to send an email as replay.
-    public async Task ReplayAsync(string messageToReplayId, GraphMessageInfo messageInfo)
+    public async Task ReplayAsync(string messageToReplayId, GraphMessageDto messageInfo)
     {
         // Create a new instance of the `Message` class.
         var message = new Message
