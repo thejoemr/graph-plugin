@@ -18,6 +18,17 @@ internal class SharepointClient : ISharepointClient
         _clientFactory = serviceProvider.GetService<IClientFactory>() ?? throw new NullReferenceException();
     }
 
+    public ClientContext GetContext()
+    {
+        // Get the values of the `usr` and `pwd` parameters from the configuration.
+        var site = _configuration.GetValue<string>("your_default_site") ?? throw new NullReferenceException();
+        var usr = _configuration.GetValue<string>("your_username_azureAD") ?? throw new NullReferenceException();
+        var pwd = _configuration.GetValue<string>("your_password_azureAD") ?? throw new NullReferenceException();
+
+        // Create a new `ClientContext` instance with the given `username`, `password`, and `scopes`.
+        return GetContext(new Uri(site), usr, pwd);
+    }
+
     public ClientContext GetContext(Uri site)
     {
         // Get the values of the `usr` and `pwd` parameters from the configuration.
@@ -25,16 +36,16 @@ internal class SharepointClient : ISharepointClient
         var pwd = _configuration.GetValue<string>("your_password_azureAD") ?? throw new NullReferenceException();
 
         // Create a new `ClientContext` instance with the given `username`, `password`, and `scopes`.
-        return _clientFactory.BuildNewToSharepoint(site, username: usr, password: pwd, scopes: new string[]
+        return GetContext(site, usr, pwd);
+    }
+
+    public ClientContext GetContext(Uri site, string username, string password)
+    {
+        // Create a new `ClientContext` instance with the given `username`, `password`, and `scopes`.
+        return _clientFactory.BuildNewToSharepoint(site, username, password, scopes: new string[]
         {
             "Sites.Read.All"
         });
-    }
-
-    public ClientContext GetContext(Uri site, string username, string password, params string[] scopes)
-    {
-        // Create a new `ClientContext` instance with the given `username`, `password`, and `scopes`.
-        return _clientFactory.BuildNewToSharepoint(site, username, password, scopes);
     }
 
     public IEnumerable<string> UploadFile(ClientContext context, string route, params (string Name, byte[] Content)[] files)
@@ -73,8 +84,10 @@ internal class SharepointClient : ISharepointClient
         return output.Select(file => file.ServerRelativeUrl);
     }
 
-    public IEnumerable<(string Name, byte[] Content)> DownloadFiles(ClientContext context, params string[] fileUrls)
+    public IEnumerable<(string Name, byte[] Content)> DownloadFile(ClientContext context, params string[] fileUrls)
     {
+        var output = new List<(string Name, byte[] Content)>();
+
         // Loop through each file URL
         foreach (var fileUrl in fileUrls)
         {
@@ -93,9 +106,10 @@ internal class SharepointClient : ISharepointClient
             using var memoryStream = new MemoryStream();
             // Copy the binary data from the file stream to the memory stream
             fileInformation.Value.CopyTo(memoryStream);
-            // Yield the file name and content as a tuple
-            yield return (fileName, memoryStream.ToArray());
+            // Adding the file name and content as a tuple
+            output.Add((fileName, memoryStream.ToArray()));
         }
-    }
 
+        return output;
+    }
 }
